@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打卡册 · 生成器</title>
+<style>
+  :root{
+    --paper:#FBFDFD;--ink:#1B1B1B;--mint:#D5E9E5;--mint-d:#B9DCD5;--mint-deep:#8FC7BC;
+    --red:#C0392B;--line:#E2ECE9;--sub:#7A8A86;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    background:var(--paper);color:var(--ink);
+    font-family:'Avenir Next','Helvetica Neue',Helvetica,'PingFang SC','Noto Sans SC','Microsoft YaHei',Arial,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:0 22px 70px;}
+  header{padding:52px 0 26px;}
+  .kicker{font-size:11px;letter-spacing:.26em;color:var(--red);text-transform:uppercase;font-weight:600;margin-bottom:16px;}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .brand b{font-size:40px;font-weight:800;letter-spacing:.06em;}
+  .brand span{font-size:26px;font-weight:300;letter-spacing:.08em;color:var(--ink);}
+  .sub{color:var(--sub);font-size:14px;margin-top:6px;}
+
+  /* 建册表单（腰封） */
+  .form{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px;margin:10px 0 34px;}
+  .form .lab{font-size:11px;letter-spacing:.2em;color:var(--sub);margin-bottom:6px;}
+  .form .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+  .field{flex:1;min-width:150px;}
+  .field.n{flex:0 0 110px;}
+  input[type=text],input[type=number]{
+    width:100%;border:none;border-bottom:1.5px solid var(--ink);background:transparent;
+    font:inherit;font-size:17px;font-weight:600;padding:6px 2px;outline:none;border-radius:0;
+  }
+  input[type=number]{font-weight:800;letter-spacing:.05em;}
+  input::placeholder{color:#B9C6C2;font-weight:500;}
+  .go{
+    border:none;background:var(--ink);color:#fff;font:inherit;font-size:14px;font-weight:700;
+    letter-spacing:.14em;padding:11px 22px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  }
+  .go:active{transform:scale(.97);}
+
+  /* 笔记本卡 */
+  .set{margin-bottom:26px;position:relative;}
+  .nb{border-radius:14px;overflow:hidden;box-shadow:0 1px 0 var(--line),0 10px 24px -18px rgba(27,43,40,.35);}
+  .band{background:#fff;padding:16px 18px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);}
+  .band .nm{font-size:20px;font-weight:800;letter-spacing:.04em;}
+  .band .meta{font-size:11px;letter-spacing:.16em;color:var(--red);font-weight:600;margin-top:2px;}
+  .band .cnt{font-size:30px;font-weight:800;color:var(--mint-deep);white-space:nowrap;}
+  .band .cnt small{font-size:14px;font-weight:500;color:var(--sub);}
+  .sheet{background:var(--mint);padding:16px 18px 18px;}
+  .sheet .icons{display:flex;gap:5px;margin-bottom:10px;}
+  .sheet .icons i{width:16px;height:16px;border:1.3px solid rgba(27,43,40,.5);border-radius:3px;display:block;}
+  .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;}
+  .cell{
+    background:rgba(255,255,255,.75);border:1.3px solid rgba(27,43,40,.28);border-radius:9px;
+    padding:9px 4px 7px;text-align:center;cursor:pointer;font:inherit;color:var(--ink);
+    transition:transform .12s,background .18s;
+  }
+  .cell:active{transform:scale(.94);}
+  .cell .no{font-size:13px;font-weight:800;letter-spacing:.04em;display:block;}
+  .cell .st{font-size:9px;letter-spacing:.14em;color:var(--sub);display:block;margin-top:2px;}
+  .cell.on{background:var(--mint-deep);border-color:var(--mint-deep);}
+  .cell.on .no{color:#fff;}
+  .cell.on .st{color:rgba(255,255,255,.9);}
+  .cell.pop{animation:pop .3s;}
+  @keyframes pop{0%{transform:scale(.9)}55%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+  .stamp{
+    position:absolute;right:14px;top:56px;transform:rotate(-8deg);z-index:2;
+    border:2px solid var(--red);color:var(--red);border-radius:8px;
+    font-size:12px;font-weight:800;letter-spacing:.22em;padding:4px 10px;background:rgba(255,255,255,.9);
+    display:none;
+  }
+  .bar{height:3px;background:rgba(27,43,40,.12);border-radius:2px;margin-top:12px;overflow:hidden;}
+  .bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .35s;}
+  .ops{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:0 4px;}
+  .ops .fr{font-size:11px;letter-spacing:.14em;color:var(--sub);}
+  .del{border:none;background:none;font:inherit;font-size:11px;letter-spacing:.1em;color:var(--sub);cursor:pointer;padding:4px;}
+  .del:hover{color:var(--red);}
+
+  footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;}
+  footer p{font-size:12px;color:var(--sub);letter-spacing:.06em;}
+  footer .fnum{font-size:20px;font-weight:300;letter-spacing:.1em;color:var(--ink);}
+  .empty{padding:40px 0;text-align:center;color:var(--sub);font-size:14px;letter-spacing:.08em;}
+  .empty b{display:block;font-size:15px;color:var(--ink);margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="kicker">Check-in Ledger</p>
+    <div class="brand"><b>打卡册</b><span>2026</span></div>
+    <p class="sub">先有了本子，然后有了坚持。建一本，点满它。</p>
+  </header>
+
+  <div class="form">
+    <p class="lab">NEW NOTEBOOK · 新建一本</p>
+    <div class="row">
+      <div class="field">
+        <input type="text" id="inName" placeholder="打卡名称（如：晨间瑜伽）" maxlength="24">
+      </div>
+      <div class="field n">
+        <input type="number" id="inTotal" placeholder="节数" min="1" max="120">
+      </div>
+      <button class="go" onclick="createSet()">生成打卡册</button>
+    </div>
+  </div>
+
+  <div id="sets"></div>
+
+  <footer>
+    <p>先想，再写下来。先有了本子，然后有了坚持。</p>
+    <span class="fnum">2026</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const KEY="checkin_ledger_v1";
+let sets;
+try{sets=JSON.parse(localStorage.getItem(KEY));if(!Array.isArray(sets))sets=[];}catch(e){sets=[];}
+const save=()=>localStorage.setItem(KEY,JSON.stringify(sets));
+
+function createSet(){
+  const name=(document.getElementById("inName").value||"").trim()||"我的打卡";
+  const total=Math.floor(+document.getElementById("inTotal").value||0);
+  if(total<1||total>120){alert("节数请填 1–120 之间的数字");return;}
+  sets.push({id:Date.now(),name,total,done:[]});
+  save();
+  document.getElementById("inName").value="";
+  document.getElementById("inTotal").value="";
+  render();
+  const el=document.getElementById("sets");
+  el.lastElementChild.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function toggleCell(sid,idx,btn){
+  const s=sets.find(x=>x.id===sid);if(!s)return;
+  const i=s.done.indexOf(idx);
+  if(i>=0)s.done.splice(i,1);else s.done.push(idx);
+  save();
+  if(!btn.classList.contains("on")){btn.classList.add("pop");setTimeout(()=>btn.classList.remove("pop"),320);}
+  renderOne(s);
+}
+function removeSet(sid){
+  const s=sets.find(x=>x.id===sid);if(!s)return;
+  if(!confirm("把《"+s.name+"》这本撕掉？进度也会一起消失。"))return;
+  sets=sets.filter(x=>x.id!==sid);
+  save();render();
+}
+function renderOne(s){
+  const el=document.getElementById("set"+s.id);if(!el)return;
+  const cnt=s.done.length,full=cnt>=s.total;
+  el.querySelector(".cnt").innerHTML=cnt+"<small> / "+s.total+"</small>";
+  el.querySelectorAll(".cell").forEach((b,i)=>{
+    b.classList.toggle("on",s.done.includes(i));
+    b.querySelector(".st").textContent=s.done.includes(i)?"DONE":"TODO";
+  });
+  el.querySelector(".bar i").style.width=(cnt/s.total*100)+"%";
+  el.querySelector(".stamp").style.display=full?"block":"none";
+  el.querySelector(".fr").textContent=cnt===0?"还没开始 · 第 1 节在等你":(full?"整本写满。本子合上了。":"下一节：第 "+(s.done.length?Math.max(...s.done)+2:1)+" 格");
+}
+function render(){
+  const root=document.getElementById("sets");
+  if(!sets.length){
+    root.innerHTML='<div class="empty"><b>书架上还空着。</b>上面填好名称和节数，生成第一本。</div>';
+    return;
+  }
+  root.innerHTML=sets.map(s=>{
+    let cells="";
+    for(let i=0;i<s.total;i++){
+      cells+='<button class="cell" data-i="'+i+'"><span class="no">'+String(i+1).padStart(2,"0")+'</span><span class="st">TODO</span></button>';
+    }
+    const ic=s.total%3;
+    const icon=ic===0?'<i style="border-style:dashed"></i>':ic===1?'<i style="border-radius:8px"></i>':'<i></i>';
+    return '<section class="set" id="set'+s.id+'">'
+      +'<div class="stamp">COMPLETED · 完课</div>'
+      +'<div class="nb"><div class="band"><div><div class="nm">'+s.name.replace(/</g,"&lt;")+'</div>'
+      +'<div class="meta">'+s.total+' LESSONS · '+String(s.total).padStart(3,"0")+'</div></div>'
+      +'<div class="cnt">0<small> / '+s.total+'</small></div></div>'
+      +'<div class="sheet"><div class="icons">'+icon+icon+icon+'</div>'
+      +'<div class="cells">'+cells+'</div><div class="bar"><i></i></div></div></div>'
+      +'<div class="ops"><span class="fr"></span><button class="del" onclick="removeSet('+s.id+')">撕掉这本</button></div></section>';
+  }).join("");
+  sets.forEach(s=>{
+    const el=document.getElementById("set"+s.id);
+    el.querySelectorAll(".cell").forEach((b,i)=>{
+      b.onclick=()=>toggleCell(s.id,i,b);
+    });
+    renderOne(s);
+  });
+}
+render();
+</script>
+</body>
+</html>
